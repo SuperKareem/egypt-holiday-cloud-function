@@ -1,5 +1,6 @@
 const functions = require("firebase-functions");
 const google = require("googleapis").google;
+const path = require('path')
 
 const GOOGLE_APIS_CREDINTIALS = {
   type: "service_account",
@@ -16,27 +17,35 @@ const GOOGLE_APIS_CREDINTIALS = {
     "https://www.googleapis.com/robot/v1/metadata/x509/calendar-holidays%40vocal-invention-278307.iam.gserviceaccount.com",
 };
 
-const SCOPE = "https://www.googleapis.com/auth/calendar";
+const SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
 
-function getTokenTimes() {
-  const issued = Date.now();
-  const expired = issued + 60 * 60 * 1000;
+exports.getHolidays = functions.https.onRequest((req, res) => {
+  const auth = new google.auth.GoogleAuth({
+    keyFile: path.join(__dirname, "key.json"),
+    scopes: SCOPE,
+  });
 
-  return { issued, expired };
-}
-
-exports.getToken = functions.https.onRequest((req, res) => {
-  new google.auth.GoogleAuth({
-    credentials: GOOGLE_APIS_CREDINTIALS,
-    scopes: [SCOPE],
-  })
-    .then((authClient) => authClient.getClient())
+  auth
+    .getClient()
     .then((client) => {
-      res.send({ client });
+      const calendar = google.calendar({
+        version: "v3",
+        auth: client,
+      });
 
+      return calendar.events.list({
+        calendarId: "en.eg#holiday@group.v.calendar.google.com",
+        orderBy: "startTime",
+        timeMin: "2020-01-1T0:00:0.000Z",
+        singleEvents: true,
+      });
+    })
+    .then((resposne) => {
+      console.log(resposne);
+      res.send({ holidays: resposne.data.items });
       return;
     })
     .catch((error) => {
-      res.send({ error });
+      res.send(error);
     });
 });
