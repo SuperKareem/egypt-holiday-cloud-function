@@ -26,7 +26,6 @@ exports.getHolidays = functions.https.onRequest((req, res) => {
       });
     })
     .then((resposne) => {
-      console.log(resposne);
       res.send({ holidays: resposne.data.items });
       return;
     })
